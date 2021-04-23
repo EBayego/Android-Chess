@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Chess</string>
+    <string name="white_turn">White\'s Turn</string>
+    <string name="black_turn">Black\'s Turn</string>
 </resources>
