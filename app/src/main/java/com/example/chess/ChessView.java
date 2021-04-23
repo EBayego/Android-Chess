@@ -1,5 +1,7 @@
 package com.example.chess;
 
+import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -7,15 +9,21 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.graphics.Paint;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +52,7 @@ public class ChessView extends View {
     private Board board;
     private int actualRow, actualColumn, finalRow, finalColumn;
     private boolean whiteTurn;
+    private View.OnClickListener onClickListener;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -131,7 +140,7 @@ public class ChessView extends View {
         paint.setUnderlineText(false);
         if (whiteTurn) {
             paint.setColor(getResources().getColor(R.color.white));
-            canvas.drawText("White's Turn", originX * 13f, originY *4f, paint);
+            canvas.drawText("White's Turn", originX * 13f, originY * 4f, paint);
         } else {
             paint.setColor(getResources().getColor(R.color.black));
             canvas.drawText("Black's Turn", originX * 13f, originY / 1.4f, paint);
@@ -222,10 +231,17 @@ public class ChessView extends View {
                 }
                 if (piece.getPlayer().equals(Player.WHITE)) {
                     if (actualRow - finalRow <= maxMove && actualRow - finalRow > 0) { //if moves 1 or 2
+                        if (finalRow == 1) {
+                            coronationMenu(piece);
+                        }
                         return true;
                     }
                 } else if (piece.getPlayer().equals(Player.BLACK)) {
                     if (finalRow - actualRow <= maxMove && finalRow - actualRow > 0) { //if moves 1 or 2
+                        if (finalRow == 8) {
+                            piece.setModel(PieceModel.QUEEN);
+                            piece.setResID(R.drawable.queenblack);
+                        }
                         return true;
                     }
                 } else {
@@ -237,6 +253,10 @@ public class ChessView extends View {
                         if (otherPiece.getModel().equals(PieceModel.KING)) {
                             return true;
                         } else if (otherPiece != null) {
+                            if (finalRow == 1) {
+                                piece.setModel(PieceModel.QUEEN);
+                                piece.setResID(R.drawable.queenwhite);
+                            }
                             piece.setColumn(finalColumn);
                             piece.setRow(finalRow);
                             board.getPieceList().remove(otherPiece);
@@ -251,6 +271,10 @@ public class ChessView extends View {
                         if (otherPiece.getModel().equals(PieceModel.KING)) {
                             return true;
                         } else if (otherPiece != null) {
+                            if (finalRow == 1) {
+                                piece.setModel(PieceModel.QUEEN);
+                                piece.setResID(R.drawable.queenblack);
+                            }
                             piece.setColumn(finalColumn);
                             piece.setRow(finalRow);
                             board.getPieceList().remove(otherPiece);
@@ -440,5 +464,67 @@ public class ChessView extends View {
             }
         }
         return false;
+    }
+
+    private void coronationMenu(Piece piece) {
+        final Dialog fbDialogue = new Dialog(ChessView.this.getContext(), android.R.style.Theme_Black_NoTitleBar);
+        fbDialogue.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
+        fbDialogue.setContentView(R.layout.coronation_menu);
+        fbDialogue.setCancelable(true);
+        fbDialogue.show();
+
+
+        onClickListener = v -> {
+            if (v.getResources().getResourceEntryName(v.getId()).contains("queen")) {
+                piece.setModel(PieceModel.QUEEN);
+                if (piece.getPlayer().equals(Player.WHITE))
+                    piece.setResID(R.drawable.queenwhite);
+                else
+                    piece.setResID(R.drawable.queenblack);
+            } else if (v.getResources().getResourceEntryName(v.getId()).contains("knight")) {
+                piece.setModel(PieceModel.KNIGHT);
+                if (piece.getPlayer().equals(Player.WHITE))
+                    piece.setResID(R.drawable.knightwhite);
+                else
+                    piece.setResID(R.drawable.knightblack);
+            } else if (v.getResources().getResourceEntryName(v.getId()).contains("rook")) {
+                piece.setModel(PieceModel.ROOK);
+                if (piece.getPlayer().equals(Player.WHITE))
+                    piece.setResID(R.drawable.rookwhite);
+                else
+                    piece.setResID(R.drawable.rookblack);
+            } else if (v.getResources().getResourceEntryName(v.getId()).contains("bishop")) {
+                piece.setModel(PieceModel.BISHOP);
+                if (piece.getPlayer().equals(Player.WHITE))
+                    piece.setResID(R.drawable.bishopwhite);
+                else
+                    piece.setResID(R.drawable.bishopblack);
+            }
+            if(fbDialogue.isShowing())
+                fbDialogue.dismiss();
+            ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+            chessView.invalidate();
+        };
+
+
+        ImageView coroQueen = fbDialogue.findViewById(R.id.queenmenu);
+        coroQueen.setOnClickListener(onClickListener);
+        ImageView coroKnight = fbDialogue.findViewById(R.id.knightmenu);
+        coroKnight.setOnClickListener(onClickListener);
+        ImageView coroRook = fbDialogue.findViewById(R.id.rookmenu);
+        coroRook.setOnClickListener(onClickListener);
+        ImageView coroBishop = fbDialogue.findViewById(R.id.bishopmenu);
+        coroBishop.setOnClickListener(onClickListener);
+        if (piece.getPlayer().equals(Player.WHITE)) {
+            coroQueen.setImageResource(R.drawable.queenwhite);
+            coroKnight.setImageResource(R.drawable.knightwhite);
+            coroRook.setImageResource(R.drawable.rookwhite);
+            coroBishop.setImageResource(R.drawable.bishopwhite);
+        } else {
+            coroQueen.setImageResource(R.drawable.queenblack);
+            coroKnight.setImageResource(R.drawable.knightblack);
+            coroRook.setImageResource(R.drawable.rookblack);
+            coroBishop.setImageResource(R.drawable.bishopblack);
+        }
     }
 }
