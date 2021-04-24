@@ -54,6 +54,7 @@ public class ChessView extends View {
     private boolean whiteTurn;
     private View.OnClickListener onClickListener;
     private int enPassantRow, enPassantColumn;
+    private boolean enPassantMove;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -176,6 +177,7 @@ public class ChessView extends View {
                 } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats and move
                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
                         endTurn(actualPiece, finalColumn, finalRow);
+                        board.getPieceList().remove(otherPiece);
                     }
                 }
             }
@@ -231,9 +233,7 @@ public class ChessView extends View {
                         if (maxMove == 2) {
                             enPassantRow = finalRow + 1;
                             enPassantColumn = finalColumn;
-                        } else if (actualColumn == finalColumn) {
-                            enPassantRow = 0;
-                            enPassantColumn = 0;
+                            enPassantMove = true;
                         }
                         return true;
                     }
@@ -245,9 +245,7 @@ public class ChessView extends View {
                         if (maxMove == 2) {
                             enPassantRow = finalRow - 1;
                             enPassantColumn = finalColumn;
-                        } else if (actualColumn == finalColumn) {
-                            enPassantRow = 0;
-                            enPassantColumn = 0;
+                            enPassantMove = true;
                         }
                         return true;
                     }
@@ -256,7 +254,7 @@ public class ChessView extends View {
                 }
             } else if (actualColumn + 1 == finalColumn || actualColumn - 1 == finalColumn) { //if trying to eat
                 if (piece.getPlayer().equals(Player.WHITE)) {
-                    if (actualRow - finalRow <= 1 && actualRow - finalRow > 0) {
+                    if (actualRow - finalRow == 1) {
                         if (otherPiece != null && otherPiece.getModel().equals(PieceModel.KING)) {
                             return true;
                         } else if (otherPiece != null) {
@@ -267,22 +265,21 @@ public class ChessView extends View {
                             board.getPieceList().remove(otherPiece);
                             return false;
                         } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
-                            endTurn(piece, finalColumn, finalRow);
                             Piece delete = null;
                             for (Piece p : board.getPieceList()) {
                                 if (!p.getPlayer().equals(piece.getPlayer()))
-                                    if (p.getPlayer().equals(Player.WHITE) && p.getRow() == enPassantRow - 1 && p.getColumn() == enPassantColumn ||
-                                            p.getPlayer().equals(Player.BLACK) && p.getRow() == enPassantRow + 1 && p.getColumn() == enPassantColumn)
+                                    if (p.getRow() == enPassantRow + 1 && p.getColumn() == enPassantColumn)
                                         delete = p;
                             }
                             if (delete != null)
                                 board.getPieceList().remove(delete);
+                            endTurn(piece, finalColumn, finalRow);
                             return false;
                         }
                     }
                 } else if (piece.getPlayer().equals(Player.BLACK)) {
-                    if (finalRow - actualRow <= 1 && finalRow - actualRow > 0) {
-                        if (otherPiece.getModel().equals(PieceModel.KING)) {
+                    if (finalRow - actualRow == 1) {
+                        if (otherPiece != null && otherPiece.getModel().equals(PieceModel.KING)) {
                             return true;
                         } else if (otherPiece != null) {
                             if (finalRow == 1) {
@@ -290,6 +287,17 @@ public class ChessView extends View {
                             }
                             endTurn(piece, finalColumn, finalRow);
                             board.getPieceList().remove(otherPiece);
+                            return false;
+                        } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
+                            Piece delete = null;
+                            for (Piece p : board.getPieceList()) {
+                                if (!p.getPlayer().equals(piece.getPlayer()))
+                                    if (p.getRow() == enPassantRow - 1 && p.getColumn() == enPassantColumn)
+                                        delete = p;
+                            }
+                            if (delete != null)
+                                board.getPieceList().remove(delete);
+                            endTurn(piece, finalColumn, finalRow);
                             return false;
                         }
                     }
@@ -534,6 +542,11 @@ public class ChessView extends View {
     }
 
     private void endTurn(Piece piece, int finalColumn, int finalRow) {
+        if (!enPassantMove) {
+            enPassantColumn = 0;
+            enPassantRow = 0;
+        } else
+            enPassantMove = false;
         piece.setColumn(finalColumn);
         piece.setRow(finalRow);
         whiteTurn = !whiteTurn;
