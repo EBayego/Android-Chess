@@ -1,6 +1,5 @@
 package com.example.chess;
 
-import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -10,15 +9,13 @@ import android.graphics.Color;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.graphics.Paint;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -46,7 +43,9 @@ public class ChessView extends View {
             R.drawable.queenblack,
             R.drawable.queenwhite,
             R.drawable.pawnblack,
-            R.drawable.pawnwhite);
+            R.drawable.pawnwhite,
+            R.drawable.kingwhitecheck,
+            R.drawable.kingblackcheck);
     private HashMap<Integer, Bitmap> bitmaps;
     private Paint paint;
     private Board board;
@@ -55,6 +54,11 @@ public class ChessView extends View {
     private View.OnClickListener onClickListener;
     private int enPassantRow, enPassantColumn;
     private boolean enPassantMove;
+    private MediaPlayer moveMP, eatMP, checkMP, checkMateMP;
+    private boolean kingChecked;
+    private List<Integer> rowsCheckList, columnsCheckList;
+    private List<Piece> piecesChecking;
+    private List<Integer> rowsXRayList, columnsXRayList;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -98,6 +102,11 @@ public class ChessView extends View {
         loadBitmaps();
         board = new Board();
         whiteTurn = true;
+        piecesChecking = new ArrayList<>();
+/*        moveMP = MediaPlayer.create(this, R.raw.move_sound);
+        eatMP = MediaPlayer.create(this, R.raw.eat_sound);
+        checkMP = MediaPlayer.create(this, R.raw.check_sound);
+        checkMateMP = MediaPlayer.create(this, R.raw.check_mate_sound);*/
     }
 
     private void loadBitmaps() {
@@ -166,18 +175,108 @@ public class ChessView extends View {
         if (actualPiece == null) {
             return;
         }
-        if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
+
+        if (!kingChecked) {
+            Piece king = null;
+            for (Piece p : board.getPieceList()) {
+                if (p.getPlayer().equals(actualPiece.getPlayer()) && p.getModel().equals(PieceModel.KING)) {
+                    king = p;
+                    break;
+                }
+            }
+            if (king != null) {
+                for (Piece p : board.getPieceList()) {
+                    if (!p.getPlayer().equals(king.getPlayer())) {
+                        if (xRay(p, king)) {
+                            if (actualPieceAloneOnXRay(p, king, actualPiece)) {
+                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece))
+                                    moveOnXRay(p, actualPiece, finalColumn, finalRow);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (kingChecked) {
+            if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
+                if (otherPiece == null && piecesChecking.size() == 1) {
+                    if (!actualPiece.getModel().equals(PieceModel.KING)) {
+                        if (rowsCheckList != null && columnsCheckList != null) { //if putting a piece in diagonal of the check
+                            for (int i = 0; i < rowsCheckList.size(); i++) {
+                                if (rowsCheckList.get(i) == finalRow && columnsCheckList.get(i) == finalColumn) {
+                                    if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        return;
+                                    }
+                                }
+                            }
+                        } else if (rowsCheckList != null) { //if putting a piece in front of the check
+                            for (int i = 0; i < rowsCheckList.size(); i++) {
+                                if (rowsCheckList.get(i) == finalRow) {
+                                    if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        return;
+                                    }
+                                }
+                            }
+                        } else if (columnsCheckList != null) { //if putting a piece in lateral of the check
+                            for (int i = 0; i < columnsCheckList.size(); i++) {
+                                if (columnsCheckList.get(i) == finalColumn) {
+                                    if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    } else { //if moving the king from the check
+                        if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                            endTurn(actualPiece, finalColumn, finalRow);
+                            return;
+                        }
+                    }
+                } else if (otherPiece != null && !otherPiece.getModel().equals(PieceModel.KING)) {
+                    if (otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //blocks with his own pieces
+                        return;
+                    } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats the checkingPiece
+                        if (piecesChecking.size() == 1) {
+                            if (piecesChecking.get(0).getColumn() == finalColumn && piecesChecking.get(0).getRow() == finalRow) {
+                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                                    board.getPieceList().remove(otherPiece);
+                                    endTurn(actualPiece, finalColumn, finalRow);
+                                    //eatMP.start();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                } else if (piecesChecking.size() == 2 && otherPiece == null){
+                    if(actualPiece.getModel().equals(PieceModel.KING)){
+                        if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                            endTurn(actualPiece, finalColumn, finalRow);
+                            return;
+                        }
+                    }
+                }
+            }
+        } else if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
             if (otherPiece == null) { //can move
                 if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
                     endTurn(actualPiece, finalColumn, finalRow);
+                    //moveMP.start();
+                    return;
                 }
             } else if (otherPiece != null && !otherPiece.getModel().equals(PieceModel.KING)) {
                 if (otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //blocks with his own pieces
                     return;
                 } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats and move
                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                        endTurn(actualPiece, finalColumn, finalRow);
                         board.getPieceList().remove(otherPiece);
+                        endTurn(actualPiece, finalColumn, finalRow);
+                        //eatMP.start();
+                        return;
                     }
                 }
             }
@@ -261,8 +360,8 @@ public class ChessView extends View {
                             if (finalRow == 1) {
                                 coronationMenu(piece);
                             }
-                            endTurn(piece, finalColumn, finalRow);
                             board.getPieceList().remove(otherPiece);
+                            endTurn(piece, finalColumn, finalRow);
                             return false;
                         } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
                             Piece delete = null;
@@ -285,8 +384,8 @@ public class ChessView extends View {
                             if (finalRow == 1) {
                                 coronationMenu(piece);
                             }
-                            endTurn(piece, finalColumn, finalRow);
                             board.getPieceList().remove(otherPiece);
+                            endTurn(piece, finalColumn, finalRow);
                             return false;
                         } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
                             Piece delete = null;
@@ -363,11 +462,11 @@ public class ChessView extends View {
                         }
                     }
                 }
-                endTurn(piece, finalColumn, finalRow);
                 board.getPieceList().remove(otherPiece);
+                endTurn(piece, finalColumn, finalRow);
                 return false;
             }
-            if (otherPiece == null) {
+            if (otherPiece == null) { //if it's a free square not defended, can move
                 for (Piece p : board.getPieceList()) {
                     if (!p.getPlayer().equals(piece.getPlayer())) {
                         if (moveRules(p, p.getRow(), p.getColumn(), finalRow, finalColumn, piece)) {
@@ -541,6 +640,7 @@ public class ChessView extends View {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void endTurn(Piece piece, int finalColumn, int finalRow) {
         if (!enPassantMove) {
             enPassantColumn = 0;
@@ -552,5 +652,237 @@ public class ChessView extends View {
         whiteTurn = !whiteTurn;
         ChessView chessView = (ChessView) findViewById(R.id.chess_view);
         chessView.invalidate();
+        kingCheck();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void kingCheck() {
+        if (piecesChecking.size() > 0)
+            piecesChecking = new ArrayList<>();
+        kingChecked = false;
+        rowsCheckList = null;
+        columnsCheckList = null;
+        Piece king = null;
+        if (!kingChecked)
+            for (Piece p : board.getPieceList())
+                if (p.getModel().equals(PieceModel.KING))
+                    if ((whiteTurn && p.getPlayer().equals(Player.WHITE)) || (!whiteTurn && p.getPlayer().equals(Player.BLACK))) {
+                        king = p;
+                        break;
+                    }
+
+        if (king != null) {
+            Piece checking = null;
+            for (Piece p : board.getPieceList()) {
+                if (!p.getPlayer().equals(king.getPlayer())) {
+                    if (moveRules(p, p.getRow(), p.getColumn(), king.getRow(), king.getColumn(), king)) {
+                        kingChecked = true;
+                        checking = p;
+                        piecesChecking.add(checking);
+                        getCheckSquareList(p, king);
+                    }
+                }
+            }
+            if (piecesChecking.size() >= 1) {
+                if (king.getPlayer().equals(Player.WHITE)) { //draw kingcheck model
+                    board.getPieceList().get(board.getPieceList().indexOf(king)).setResID(R.drawable.kingwhitecheck);
+                } else
+                    board.getPieceList().get(board.getPieceList().indexOf(king)).setResID(R.drawable.kingblackcheck);
+            }  else { //draw original model
+                for (Piece p : board.getPieceList()) {
+                    if (p.getModel().equals(PieceModel.KING)) {
+                        if (p.getPlayer().equals(Player.WHITE))
+                            p.setResID(R.drawable.kingwhite);
+                        else
+                            p.setResID(R.drawable.kingblack);
+                    }
+                }
+            }
+        }
+        ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+        chessView.invalidate();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void getCheckSquareList(Piece p, Piece king) {
+        switch (p.getModel()) {
+            case ROOK:
+                if (king.getRow() == p.getRow()) {
+                    if (p.getColumn() >= king.getColumn()) {
+                        columnsCheckList = IntStream.rangeClosed(king.getColumn() + 1, p.getColumn() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(columnsCheckList);
+                    } else
+                        columnsCheckList = IntStream.rangeClosed(p.getColumn() + 1, king.getColumn() - 1).boxed().collect(Collectors.toList());
+                } else if (king.getColumn() == p.getColumn()) {
+                    if (p.getRow() >= king.getRow()) {
+                        rowsCheckList = IntStream.rangeClosed(king.getRow() + 1, p.getRow() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(rowsCheckList);
+                    } else
+                        rowsCheckList = IntStream.rangeClosed(p.getRow() + 1, king.getRow() - 1).boxed().collect(Collectors.toList());
+                }
+                break;
+            case BISHOP:
+                if (p.getRow() >= king.getRow()) {
+                    rowsCheckList = IntStream.rangeClosed(king.getRow() + 1, p.getRow() - 1).boxed().collect(Collectors.toList());
+                    Collections.reverse(rowsCheckList);
+                } else
+                    rowsCheckList = IntStream.rangeClosed(p.getRow() + 1, king.getRow() - 1).boxed().collect(Collectors.toList());
+
+                if (p.getColumn() >= king.getColumn()) {
+                    columnsCheckList = IntStream.rangeClosed(king.getColumn() + 1, p.getColumn() - 1).boxed().collect(Collectors.toList());
+                    Collections.reverse(columnsCheckList);
+                } else
+                    columnsCheckList = IntStream.rangeClosed(p.getColumn() + 1, king.getColumn() - 1).boxed().collect(Collectors.toList());
+                break;
+            case QUEEN:
+                if (king.getRow() == p.getRow()) {
+                    if (p.getColumn() >= king.getColumn()) {
+                        columnsCheckList = IntStream.rangeClosed(king.getColumn() + 1, p.getColumn() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(columnsCheckList);
+                    } else
+                        columnsCheckList = IntStream.rangeClosed(p.getColumn() + 1, king.getColumn() - 1).boxed().collect(Collectors.toList());
+
+                } else if (king.getColumn() == p.getColumn()) {
+                    if (p.getRow() >= king.getRow()) {
+                        rowsCheckList = IntStream.rangeClosed(king.getRow() + 1, p.getRow() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(rowsCheckList);
+                    } else
+                        rowsCheckList = IntStream.rangeClosed(p.getRow() + 1, king.getRow() - 1).boxed().collect(Collectors.toList());
+
+                } else {
+                    if (p.getRow() >= king.getRow()) {
+                        rowsCheckList = IntStream.rangeClosed(king.getRow() + 1, p.getRow() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(rowsCheckList);
+                    } else
+                        rowsCheckList = IntStream.rangeClosed(p.getRow() + 1, king.getRow() - 1).boxed().collect(Collectors.toList());
+
+                    if (p.getColumn() >= king.getColumn()) {
+                        columnsCheckList = IntStream.rangeClosed(king.getColumn() + 1, p.getColumn() - 1).boxed().collect(Collectors.toList());
+                        Collections.reverse(columnsCheckList);
+                    } else
+                        columnsCheckList = IntStream.rangeClosed(p.getColumn() + 1, king.getColumn() - 1).boxed().collect(Collectors.toList());
+                }
+                break;
+        }
+    }
+
+    private boolean xRay(Piece piece, Piece king) {
+        switch (piece.getModel()) {
+            case ROOK:
+                if (piece.getColumn() == king.getColumn() || piece.getRow() == king.getRow()) {
+                    return true;
+                }
+                break;
+            case BISHOP:
+                if (Math.abs(piece.getColumn() - king.getColumn()) == Math.abs(piece.getRow() - king.getRow())) {
+                    return true;
+                }
+                break;
+            case QUEEN:
+                if (piece.getColumn() == king.getColumn() || piece.getRow() == king.getRow())
+                    return true;
+                else if (Math.abs(piece.getColumn() - king.getColumn()) == Math.abs(piece.getRow() - king.getRow()))
+                    return true;
+                break;
+        }
+        return false;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private boolean actualPieceAloneOnXRay(Piece piece, Piece king, Piece actualPiece) {
+        getCheckSquareList(piece, king);
+        rowsXRayList = rowsCheckList;
+        columnsXRayList = columnsCheckList;
+        rowsCheckList = null;
+        columnsCheckList = null;
+        List<Piece> piecesXRay = new ArrayList<>();
+        if (rowsXRayList != null && columnsXRayList != null) { //if putting a piece in diagonal of the check
+            for (Piece p : board.getPieceList()) {
+                for (int i = 0; i < rowsXRayList.size(); i++) {
+                    if (rowsXRayList.get(i) == p.getRow() && columnsXRayList.get(i) == p.getColumn()) {
+                        piecesXRay.add(p);
+                    }
+                }
+            }
+        } else if (rowsXRayList != null) { //if putting a piece in front of the check
+            for (Piece p : board.getPieceList()) {
+                for (int i = 0; i < rowsXRayList.size(); i++) {
+                    if (p.getColumn() == king.getColumn() && rowsXRayList.get(i) == p.getRow()) {
+                        piecesXRay.add(p);
+                    }
+                }
+            }
+        } else if (columnsXRayList != null) { //if putting a piece in lateral of the check
+            for (Piece p : board.getPieceList()) {
+                for (int i = 0; i < columnsXRayList.size(); i++) {
+                    if (p.getRow() == king.getRow() && columnsXRayList.get(i) == p.getColumn()) {
+                        piecesXRay.add(p);
+                    }
+                }
+            }
+        }
+        if (piecesXRay != null && piecesXRay.contains(actualPiece)) {
+            if (piecesXRay.size() == 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void moveOnXRay(Piece p, Piece piece, int finalColumn, int finalRow) {
+        switch (p.getModel()) {
+            case ROOK:
+                if (rowsXRayList != null) {
+                    if ((rowsXRayList.contains(finalRow) || p.getRow() == finalRow) && p.getColumn() == finalColumn) {
+                        if (p.getRow() == finalRow)
+                            board.getPieceList().remove(p);
+                        endTurn(piece, finalColumn, finalRow);
+                    }
+                } else if (columnsXRayList != null) {
+                    if ((columnsXRayList.contains(finalColumn) || p.getColumn() == finalColumn) && p.getRow() == finalRow) {
+                        if (p.getColumn() == finalColumn)
+                            board.getPieceList().remove(p);
+                        endTurn(piece, finalColumn, finalRow);
+                    }
+                }
+                break;
+            case BISHOP:
+                if (rowsXRayList != null && columnsXRayList != null) {
+                    for (int i = 0; i < rowsXRayList.size(); i++) {
+                        if ((rowsXRayList.get(i) == finalRow && columnsXRayList.get(i) == finalColumn) || (p.getRow() == finalRow && p.getColumn() == finalColumn)) {
+                            if (p.getRow() == finalRow && p.getColumn() == finalColumn)
+                                board.getPieceList().remove(p);
+                            endTurn(piece, finalColumn, finalRow);
+                        }
+                    }
+                }
+                break;
+            case QUEEN:
+                if (rowsXRayList != null && columnsXRayList != null) {
+                    for (int i = 0; i < rowsXRayList.size(); i++) {
+                        if ((rowsXRayList.get(i) == finalRow && columnsXRayList.get(i) == finalColumn) || (p.getRow() == finalRow && p.getColumn() == finalColumn)) {
+                            if (p.getRow() == finalRow && p.getColumn() == finalColumn)
+                                board.getPieceList().remove(p);
+                            endTurn(piece, finalColumn, finalRow);
+                        }
+                    }
+                } else if (rowsXRayList != null) {
+                    if ((rowsXRayList.contains(finalRow) || p.getRow() == finalRow) && p.getColumn() == finalColumn) {
+                        if (p.getRow() == finalRow)
+                            board.getPieceList().remove(p);
+                        endTurn(piece, finalColumn, finalRow);
+                    }
+                } else if (columnsXRayList != null) {
+                    if ((columnsXRayList.contains(finalColumn) || p.getColumn() == finalColumn) && p.getRow() == finalRow) {
+                        if (p.getColumn() == finalColumn)
+                            board.getPieceList().remove(p);
+                        endTurn(piece, finalColumn, finalRow);
+                    }
+                }
+                break;
+        }
+        rowsXRayList = null;
+        columnsXRayList = null;
     }
 }
