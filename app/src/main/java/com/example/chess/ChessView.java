@@ -103,10 +103,10 @@ public class ChessView extends View {
         board = new Board();
         whiteTurn = true;
         piecesChecking = new ArrayList<>();
-/*        moveMP = MediaPlayer.create(this, R.raw.move_sound);
-        eatMP = MediaPlayer.create(this, R.raw.eat_sound);
-        checkMP = MediaPlayer.create(this, R.raw.check_sound);
-        checkMateMP = MediaPlayer.create(this, R.raw.check_mate_sound);*/
+        moveMP = MediaPlayer.create(this.getContext(), R.raw.move_sound);
+        eatMP = MediaPlayer.create(this.getContext(), R.raw.eat_sound);
+        checkMP = MediaPlayer.create(this.getContext(), R.raw.check_sound);
+        checkMateMP = MediaPlayer.create(this.getContext(), R.raw.check_mate_sound);
     }
 
     private void loadBitmaps() {
@@ -207,7 +207,7 @@ public class ChessView extends View {
                             for (int i = 0; i < rowsCheckList.size(); i++) {
                                 if (rowsCheckList.get(i) == finalRow && columnsCheckList.get(i) == finalColumn) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        endTurn(actualPiece, finalColumn, finalRow, false);
                                         return;
                                     }
                                 }
@@ -216,7 +216,7 @@ public class ChessView extends View {
                             for (int i = 0; i < rowsCheckList.size(); i++) {
                                 if (rowsCheckList.get(i) == finalRow) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        endTurn(actualPiece, finalColumn, finalRow, false);
                                         return;
                                     }
                                 }
@@ -225,7 +225,7 @@ public class ChessView extends View {
                             for (int i = 0; i < columnsCheckList.size(); i++) {
                                 if (columnsCheckList.get(i) == finalColumn) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                        endTurn(actualPiece, finalColumn, finalRow);
+                                        endTurn(actualPiece, finalColumn, finalRow, false);
                                         return;
                                     }
                                 }
@@ -233,7 +233,7 @@ public class ChessView extends View {
                         }
                     } else { //if moving the king from the check
                         if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                            endTurn(actualPiece, finalColumn, finalRow);
+                            endTurn(actualPiece, finalColumn, finalRow, false);
                             return;
                         }
                     }
@@ -245,17 +245,16 @@ public class ChessView extends View {
                             if (piecesChecking.get(0).getColumn() == finalColumn && piecesChecking.get(0).getRow() == finalRow) {
                                 if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
                                     board.getPieceList().remove(otherPiece);
-                                    endTurn(actualPiece, finalColumn, finalRow);
-                                    //eatMP.start();
+                                    endTurn(actualPiece, finalColumn, finalRow, true);
                                     return;
                                 }
                             }
                         }
                     }
-                } else if (piecesChecking.size() == 2 && otherPiece == null){
-                    if(actualPiece.getModel().equals(PieceModel.KING)){
+                } else if (piecesChecking.size() == 2 && otherPiece == null) {
+                    if (actualPiece.getModel().equals(PieceModel.KING)) {
                         if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                            endTurn(actualPiece, finalColumn, finalRow);
+                            endTurn(actualPiece, finalColumn, finalRow, false);
                             return;
                         }
                     }
@@ -264,8 +263,7 @@ public class ChessView extends View {
         } else if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
             if (otherPiece == null) { //can move
                 if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                    endTurn(actualPiece, finalColumn, finalRow);
-                    //moveMP.start();
+                    endTurn(actualPiece, finalColumn, finalRow, false);
                     return;
                 }
             } else if (otherPiece != null && !otherPiece.getModel().equals(PieceModel.KING)) {
@@ -274,8 +272,7 @@ public class ChessView extends View {
                 } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats and move
                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
                         board.getPieceList().remove(otherPiece);
-                        endTurn(actualPiece, finalColumn, finalRow);
-                        //eatMP.start();
+                        endTurn(actualPiece, finalColumn, finalRow, true);
                         return;
                     }
                 }
@@ -361,7 +358,7 @@ public class ChessView extends View {
                                 coronationMenu(piece);
                             }
                             board.getPieceList().remove(otherPiece);
-                            endTurn(piece, finalColumn, finalRow);
+                            endTurn(piece, finalColumn, finalRow, true);
                             return false;
                         } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
                             Piece delete = null;
@@ -372,7 +369,7 @@ public class ChessView extends View {
                             }
                             if (delete != null)
                                 board.getPieceList().remove(delete);
-                            endTurn(piece, finalColumn, finalRow);
+                            endTurn(piece, finalColumn, finalRow, delete != null);
                             return false;
                         }
                     }
@@ -385,7 +382,7 @@ public class ChessView extends View {
                                 coronationMenu(piece);
                             }
                             board.getPieceList().remove(otherPiece);
-                            endTurn(piece, finalColumn, finalRow);
+                            endTurn(piece, finalColumn, finalRow, true);
                             return false;
                         } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
                             Piece delete = null;
@@ -396,7 +393,7 @@ public class ChessView extends View {
                             }
                             if (delete != null)
                                 board.getPieceList().remove(delete);
-                            endTurn(piece, finalColumn, finalRow);
+                            endTurn(piece, finalColumn, finalRow, delete != null);
                             return false;
                         }
                     }
@@ -463,7 +460,7 @@ public class ChessView extends View {
                     }
                 }
                 board.getPieceList().remove(otherPiece);
-                endTurn(piece, finalColumn, finalRow);
+                endTurn(piece, finalColumn, finalRow, true);
                 return false;
             }
             if (otherPiece == null) { //if it's a free square not defended, can move
@@ -641,7 +638,7 @@ public class ChessView extends View {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void endTurn(Piece piece, int finalColumn, int finalRow) {
+    private void endTurn(Piece piece, int finalColumn, int finalRow, boolean eats) {
         if (!enPassantMove) {
             enPassantColumn = 0;
             enPassantRow = 0;
@@ -653,6 +650,13 @@ public class ChessView extends View {
         ChessView chessView = (ChessView) findViewById(R.id.chess_view);
         chessView.invalidate();
         kingCheck();
+        if (kingChecked) {
+            checkMP.start();
+        } else if (eats) {
+            eatMP.start();
+        } else {
+            moveMP.start();
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -688,7 +692,7 @@ public class ChessView extends View {
                     board.getPieceList().get(board.getPieceList().indexOf(king)).setResID(R.drawable.kingwhitecheck);
                 } else
                     board.getPieceList().get(board.getPieceList().indexOf(king)).setResID(R.drawable.kingblackcheck);
-            }  else { //draw original model
+            } else { //draw original model
                 for (Piece p : board.getPieceList()) {
                     if (p.getModel().equals(PieceModel.KING)) {
                         if (p.getPlayer().equals(Player.WHITE))
@@ -831,19 +835,24 @@ public class ChessView extends View {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void moveOnXRay(Piece p, Piece piece, int finalColumn, int finalRow) {
+        boolean eats = false;
         switch (p.getModel()) {
             case ROOK:
                 if (rowsXRayList != null) {
                     if ((rowsXRayList.contains(finalRow) || p.getRow() == finalRow) && p.getColumn() == finalColumn) {
-                        if (p.getRow() == finalRow)
+                        if (p.getRow() == finalRow) {
                             board.getPieceList().remove(p);
-                        endTurn(piece, finalColumn, finalRow);
+                            eats = true;
+                        }
+                        endTurn(piece, finalColumn, finalRow, eats);
                     }
                 } else if (columnsXRayList != null) {
                     if ((columnsXRayList.contains(finalColumn) || p.getColumn() == finalColumn) && p.getRow() == finalRow) {
-                        if (p.getColumn() == finalColumn)
+                        if (p.getColumn() == finalColumn) {
                             board.getPieceList().remove(p);
-                        endTurn(piece, finalColumn, finalRow);
+                            eats = true;
+                        }
+                        endTurn(piece, finalColumn, finalRow, eats);
                     }
                 }
                 break;
@@ -851,9 +860,11 @@ public class ChessView extends View {
                 if (rowsXRayList != null && columnsXRayList != null) {
                     for (int i = 0; i < rowsXRayList.size(); i++) {
                         if ((rowsXRayList.get(i) == finalRow && columnsXRayList.get(i) == finalColumn) || (p.getRow() == finalRow && p.getColumn() == finalColumn)) {
-                            if (p.getRow() == finalRow && p.getColumn() == finalColumn)
+                            if (p.getRow() == finalRow && p.getColumn() == finalColumn) {
                                 board.getPieceList().remove(p);
-                            endTurn(piece, finalColumn, finalRow);
+                                eats = true;
+                            }
+                            endTurn(piece, finalColumn, finalRow, eats);
                         }
                     }
                 }
@@ -862,22 +873,28 @@ public class ChessView extends View {
                 if (rowsXRayList != null && columnsXRayList != null) {
                     for (int i = 0; i < rowsXRayList.size(); i++) {
                         if ((rowsXRayList.get(i) == finalRow && columnsXRayList.get(i) == finalColumn) || (p.getRow() == finalRow && p.getColumn() == finalColumn)) {
-                            if (p.getRow() == finalRow && p.getColumn() == finalColumn)
+                            if (p.getRow() == finalRow && p.getColumn() == finalColumn) {
                                 board.getPieceList().remove(p);
-                            endTurn(piece, finalColumn, finalRow);
+                                eats = true;
+                            }
+                            endTurn(piece, finalColumn, finalRow, eats);
                         }
                     }
                 } else if (rowsXRayList != null) {
                     if ((rowsXRayList.contains(finalRow) || p.getRow() == finalRow) && p.getColumn() == finalColumn) {
-                        if (p.getRow() == finalRow)
+                        if (p.getRow() == finalRow) {
                             board.getPieceList().remove(p);
-                        endTurn(piece, finalColumn, finalRow);
+                            eats = true;
+                        }
+                        endTurn(piece, finalColumn, finalRow, eats);
                     }
                 } else if (columnsXRayList != null) {
                     if ((columnsXRayList.contains(finalColumn) || p.getColumn() == finalColumn) && p.getRow() == finalRow) {
-                        if (p.getColumn() == finalColumn)
+                        if (p.getColumn() == finalColumn) {
                             board.getPieceList().remove(p);
-                        endTurn(piece, finalColumn, finalRow);
+                            eats = true;
+                        }
+                        endTurn(piece, finalColumn, finalRow, eats);
                     }
                 }
                 break;
