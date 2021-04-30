@@ -108,7 +108,7 @@ public class ChessView extends View {
             if (actualRow != finalRow || actualColumn != finalColumn)
                 movePiece(actualRow, actualColumn, finalRow, finalColumn);
             if (checkMate) {
-                if(event.getX() >= (canvasWidth*311f/1080f) && event.getX()<=(canvasWidth*760f/1080f) && event.getY()>=(canvasHeight*1602f/1868f) && event.getY()<=(canvasHeight*1694f/1868f)) {
+                if (event.getX() >= (canvasWidth * 311f / 1080f) && event.getX() <= (canvasWidth * 760f / 1080f) && event.getY() >= (canvasHeight * 1602f / 1868f) && event.getY() <= (canvasHeight * 1694f / 1868f)) {
                     restartGame = true;
                     ChessView chessView = (ChessView) findViewById(R.id.chess_view);
                     chessView.invalidate();
@@ -237,7 +237,7 @@ public class ChessView extends View {
             if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
                 if (otherPiece == null && piecesChecking.size() == 1) {
                     if (!actualPiece.getModel().equals(PieceModel.KING)) {
-                        if (rowsCheckList != null && columnsCheckList != null) { //if putting a piece in diagonal of the check
+                        if (rowsCheckList != null && rowsCheckList.size() > 0 && columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in diagonal of the check
                             for (int i = 0; i < rowsCheckList.size(); i++) {
                                 if (rowsCheckList.get(i) == finalRow && columnsCheckList.get(i) == finalColumn) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
@@ -246,7 +246,7 @@ public class ChessView extends View {
                                     }
                                 }
                             }
-                        } else if (rowsCheckList != null) { //if putting a piece in front of the check
+                        } else if (rowsCheckList != null && rowsCheckList.size() > 0) { //if putting a piece in front of the check
                             for (int i = 0; i < rowsCheckList.size(); i++) {
                                 if (rowsCheckList.get(i) == finalRow) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
@@ -255,7 +255,7 @@ public class ChessView extends View {
                                     }
                                 }
                             }
-                        } else if (columnsCheckList != null) { //if putting a piece in lateral of the check
+                        } else if (columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in lateral of the check
                             for (int i = 0; i < columnsCheckList.size(); i++) {
                                 if (columnsCheckList.get(i) == finalColumn) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
@@ -839,10 +839,10 @@ public class ChessView extends View {
                 if (!p.getPlayer().equals(king.getPlayer())) {
                     if (moveRules(p, p.getRow(), p.getColumn(), king.getRow(), king.getColumn(), king)) {
                         kingChecked = true;
-                        kingCheckMated(p, king);
                         checking = p;
                         piecesChecking.add(checking);
                         getCheckSquareList(p, king);
+                        kingCheckMated(p, king);
                     }
                 }
             }
@@ -1065,43 +1065,48 @@ public class ChessView extends View {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void kingCheckMated(Piece checkingPiece, Piece king) {
         if (piecesChecking.size() == 1) {
-            if (rowsCheckList != null && columnsCheckList != null) { //if putting a piece in diagonal of the check
+            if (rowsCheckList != null && rowsCheckList.size() > 0 && columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in diagonal of the check
                 for (int i = 0; i < rowsCheckList.size(); i++) {
                     for (Piece p : board.getPieceList()) {
-                        if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), columnsCheckList.get(i), null)) {
-                            return;
-                        }
+                        if (p.getPlayer().equals(king.getPlayer()))
+                            if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), columnsCheckList.get(i), null)) {
+                                return;
+                            }
                     }
                 }
-            } else if (rowsCheckList != null) { //if putting a piece in front of the check
+            } else if (rowsCheckList != null && rowsCheckList.size() > 0) { //if putting a piece in front of the check
                 for (int i = 0; i < rowsCheckList.size(); i++) {
                     for (Piece p : board.getPieceList()) {
-                        if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), checkingPiece.getColumn(), null)) {
-                            return;
-                        }
+                        if (p.getPlayer().equals(king.getPlayer()))
+                            if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), checkingPiece.getColumn(), null)) {
+                                return;
+                            }
                     }
                 }
-            } else if (columnsCheckList != null) { //if putting a piece in lateral of the check
+            } else if (columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in lateral of the check
                 for (int i = 0; i < columnsCheckList.size(); i++) {
                     for (Piece p : board.getPieceList()) {
-                        if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), columnsCheckList.get(i), null)) {
-                            return;
-                        }
+                        if (p.getPlayer().equals(king.getPlayer()))
+                            if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), columnsCheckList.get(i), null)) {
+                                return;
+                            }
                     }
                 }
             }
             // if can eat the checkingPiece
             for (Piece p : board.getPieceList()) {
-                if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), checkingPiece.getColumn(), checkingPiece)) {
-                    return;
-                }
+                if (p.getPlayer().equals(king.getPlayer()))
+                    if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), checkingPiece.getColumn(), checkingPiece)) {
+                        return;
+                    }
             }
             // if the king can move
             for (int row = -1; row <= 1; row++) {
                 for (int column = -1; column <= 1; column++) {
-                    if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, null)) {
-                        return;
-                    }
+                    if (king.getRow() + row < 1 && king.getRow() + row > 8 && king.getColumn() + column < 1 && king.getColumn() + column > 8)
+                        if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, null)) {
+                            return;
+                        }
                 }
             }
         } else if (piecesChecking.size() == 2) {
