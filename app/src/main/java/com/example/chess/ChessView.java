@@ -30,7 +30,7 @@ import java.util.stream.IntStream;
 
 public class ChessView extends View {
     private final float scale = .95f;
-    private float originX = 0f, originY = 0f, squareSize = 0f;
+    private float originX = 0f, originY = 0f, squareSize = 0f, canvasWidth, canvasHeight;
     private final List<Integer> imgIds = Arrays.asList(
             R.drawable.rookblack,
             R.drawable.rookwhite,
@@ -54,8 +54,8 @@ public class ChessView extends View {
     private View.OnClickListener onClickListener;
     private int enPassantRow, enPassantColumn;
     private boolean enPassantMove;
-    private MediaPlayer moveMP, eatMP, checkMP, checkMateMP;
-    private boolean kingChecked;
+    private MediaPlayer moveMP, eatMP, checkMP, checkMateMP, startGame;
+    private boolean kingChecked, checkMate, restartGame;
     private List<Integer> rowsCheckList, columnsCheckList;
     private List<Piece> piecesChecking;
     private List<Integer> rowsXRayList, columnsXRayList;
@@ -68,11 +68,13 @@ public class ChessView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (canvas != null && squareSize == 0f) {
+        if ((canvas != null && squareSize == 0f) || restartGame) {
             float boardSize = ((canvas.getWidth() <= canvas.getHeight()) ? canvas.getWidth() : canvas.getHeight()) * scale;
             squareSize = boardSize / 8f;
             originX = (canvas.getWidth() - boardSize) / 2f;
             originY = (canvas.getHeight() - boardSize) / 2f;
+            canvasHeight = canvas.getHeight();
+            canvasWidth = canvas.getWidth();
             initVariables();
         }
         paint.setColor(getResources().getColor(R.color.darkMode));
@@ -80,6 +82,17 @@ public class ChessView extends View {
         initBoard(canvas);
         initPieces(canvas);
         switchText(canvas);
+        if (checkMate) {
+            canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.new_game_button),
+                    null,
+                    new RectF(
+                            originX + squareSize * 2.25f,
+                            originY * 3.8f,
+                            originX + squareSize * 2.25f + squareSize * 3.5f,
+                            originY * 3.8f + squareSize * .75f
+                    ),
+                    paint);
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -94,6 +107,13 @@ public class ChessView extends View {
             finalColumn = (int) (((event.getX() - originX) / squareSize) + 1);
             if (actualRow != finalRow || actualColumn != finalColumn)
                 movePiece(actualRow, actualColumn, finalRow, finalColumn);
+            if (checkMate) {
+                if(event.getX() >= (canvasWidth*311f/1080f) && event.getX()<=(canvasWidth*760f/1080f) && event.getY()>=(canvasHeight*1602f/1868f) && event.getY()<=(canvasHeight*1694f/1868f)) {
+                    restartGame = true;
+                    ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+                    chessView.invalidate();
+                }
+            }
         }
         return true;
     }
@@ -109,12 +129,16 @@ public class ChessView extends View {
         eatMP = MediaPlayer.create(this.getContext(), R.raw.eat_sound);
         checkMP = MediaPlayer.create(this.getContext(), R.raw.check_sound);
         checkMateMP = MediaPlayer.create(this.getContext(), R.raw.check_mate_sound);
+        startGame = MediaPlayer.create(this.getContext(), R.raw.start_game);
         blackKingFirstMove = true;
         whiteKingFirstMove = true;
         whiteSortRookFirstMove = true;
         whiteLongRookFirstMove = true;
         blackSortRookFirstMove = true;
         blackLongRookFirstMove = true;
+        kingChecked = false;
+        checkMate = false;
+        restartGame = false;
     }
 
     private void loadBitmaps() {
@@ -154,15 +178,17 @@ public class ChessView extends View {
     }
 
     private void switchText(Canvas canvas) {
-        paint.setTextSize(60);
-        paint.setTypeface(Typeface.SERIF);
-        paint.setUnderlineText(false);
-        if (whiteTurn) {
-            paint.setColor(getResources().getColor(R.color.white));
-            canvas.drawText("White's Turn", originX * 13f, originY * 4f, paint);
-        } else {
-            paint.setColor(getResources().getColor(R.color.black));
-            canvas.drawText("Black's Turn", originX * 13f, originY / 1.4f, paint);
+        if (!checkMate) {
+            paint.setTextSize(60);
+            paint.setTypeface(Typeface.SERIF);
+            paint.setUnderlineText(false);
+            if (whiteTurn) {
+                paint.setColor(getResources().getColor(R.color.white));
+                canvas.drawText("White's Turn", originX * 13f, originY * 4f, paint);
+            } else {
+                paint.setColor(getResources().getColor(R.color.black));
+                canvas.drawText("Black's Turn", originX * 13f, originY / 1.4f, paint);
+            }
         }
     }
 
@@ -250,20 +276,23 @@ public class ChessView extends View {
                         return;
                     } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats the checkingPiece
                         if (piecesChecking.size() == 1) {
-                            if (piecesChecking.get(0).getColumn() == finalColumn && piecesChecking.get(0).getRow() == finalRow) {
+                            if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
+                                board.getPieceList().remove(otherPiece);
+                                endTurn(actualPiece, finalColumn, finalRow, true);
+                                return;
+                            }
+                        } else if (piecesChecking.size() == 2) {
+                            if (actualPiece.getModel().equals(PieceModel.KING)) {
                                 if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                    board.getPieceList().remove(otherPiece);
-                                    endTurn(actualPiece, finalColumn, finalRow, true);
+                                    if (otherPiece != null) {
+                                        board.getPieceList().remove(otherPiece);
+                                        endTurn(actualPiece, finalColumn, finalRow, true);
+                                    } else {
+                                        endTurn(actualPiece, finalColumn, finalRow, false);
+                                    }
                                     return;
                                 }
                             }
-                        }
-                    }
-                } else if (piecesChecking.size() == 2 && otherPiece == null) {
-                    if (actualPiece.getModel().equals(PieceModel.KING)) {
-                        if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                            endTurn(actualPiece, finalColumn, finalRow, false);
-                            return;
                         }
                     }
                 }
@@ -679,7 +708,7 @@ public class ChessView extends View {
                 endTurn(king, finalColumn, finalRow, false);
                 blackKingFirstMove = false;
                 blackLongRookFirstMove = false;
-            } else if (blackSortRookFirstMove && finalRow == 1 &&finalColumn == 7) {
+            } else if (blackSortRookFirstMove && finalRow == 1 && finalColumn == 7) {
                 for (Piece p : board.getPieceList()) {
                     if (!p.getModel().equals(PieceModel.KING)) {
                         if (p.getRow() == 1 && (p.getColumn() == 6 || p.getColumn() == 7)) {
@@ -810,7 +839,7 @@ public class ChessView extends View {
                 if (!p.getPlayer().equals(king.getPlayer())) {
                     if (moveRules(p, p.getRow(), p.getColumn(), king.getRow(), king.getColumn(), king)) {
                         kingChecked = true;
-                        kingCheckMated();
+                        kingCheckMated(p, king);
                         checking = p;
                         piecesChecking.add(checking);
                         getCheckSquareList(p, king);
@@ -1033,66 +1062,59 @@ public class ChessView extends View {
         columnsXRayList = null;
     }
 
-    private void kingCheckMated() {
-        /*if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
-            if (otherPiece == null && piecesChecking.size() == 1) {
-                if (!actualPiece.getModel().equals(PieceModel.KING)) {
-                    if (rowsCheckList != null && columnsCheckList != null) { //if putting a piece in diagonal of the check
-                        for (int i = 0; i < rowsCheckList.size(); i++) {
-                            if (rowsCheckList.get(i) == finalRow && columnsCheckList.get(i) == finalColumn) {
-                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                    endTurn(actualPiece, finalColumn, finalRow, false);
-                                    return;
-                                }
-                            }
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void kingCheckMated(Piece checkingPiece, Piece king) {
+        if (piecesChecking.size() == 1) {
+            if (rowsCheckList != null && columnsCheckList != null) { //if putting a piece in diagonal of the check
+                for (int i = 0; i < rowsCheckList.size(); i++) {
+                    for (Piece p : board.getPieceList()) {
+                        if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), columnsCheckList.get(i), null)) {
+                            return;
                         }
-                    } else if (rowsCheckList != null) { //if putting a piece in front of the check
-                        for (int i = 0; i < rowsCheckList.size(); i++) {
-                            if (rowsCheckList.get(i) == finalRow) {
-                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                    endTurn(actualPiece, finalColumn, finalRow, false);
-                                    return;
-                                }
-                            }
-                        }
-                    } else if (columnsCheckList != null) { //if putting a piece in lateral of the check
-                        for (int i = 0; i < columnsCheckList.size(); i++) {
-                            if (columnsCheckList.get(i) == finalColumn) {
-                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                    endTurn(actualPiece, finalColumn, finalRow, false);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                } else { //if moving the king from the check
-                    if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                        endTurn(actualPiece, finalColumn, finalRow, false);
-                        return;
                     }
                 }
-            } else if (otherPiece != null && !otherPiece.getModel().equals(PieceModel.KING)) {
-                if (otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //blocks with his own pieces
+            } else if (rowsCheckList != null) { //if putting a piece in front of the check
+                for (int i = 0; i < rowsCheckList.size(); i++) {
+                    for (Piece p : board.getPieceList()) {
+                        if (moveRules(p, p.getRow(), p.getColumn(), rowsCheckList.get(i), checkingPiece.getColumn(), null)) {
+                            return;
+                        }
+                    }
+                }
+            } else if (columnsCheckList != null) { //if putting a piece in lateral of the check
+                for (int i = 0; i < columnsCheckList.size(); i++) {
+                    for (Piece p : board.getPieceList()) {
+                        if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), columnsCheckList.get(i), null)) {
+                            return;
+                        }
+                    }
+                }
+            }
+            // if can eat the checkingPiece
+            for (Piece p : board.getPieceList()) {
+                if (moveRules(p, p.getRow(), p.getColumn(), checkingPiece.getRow(), checkingPiece.getColumn(), checkingPiece)) {
                     return;
-                } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats the checkingPiece
-                    if (piecesChecking.size() == 1) {
-                        if (piecesChecking.get(0).getColumn() == finalColumn && piecesChecking.get(0).getRow() == finalRow) {
-                            if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                                board.getPieceList().remove(otherPiece);
-                                endTurn(actualPiece, finalColumn, finalRow, true);
-                                return;
-                            }
-                        }
-                    }
                 }
-            } else if (piecesChecking.size() == 2 && otherPiece == null) {
-                if (actualPiece.getModel().equals(PieceModel.KING)) {
-                    if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece)) {
-                        endTurn(actualPiece, finalColumn, finalRow, false);
+            }
+            // if the king can move
+            for (int row = -1; row <= 1; row++) {
+                for (int column = -1; column <= 1; column++) {
+                    if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, null)) {
                         return;
                     }
                 }
             }
-        }*/
+        } else if (piecesChecking.size() == 2) {
+            for (int row = -1; row <= 1; row++) {
+                for (int column = -1; column <= 1; column++) {
+                    if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, null)) {
+                        return;
+                    }
+                }
+            }
+        }
+        //condicion de victoria
+        checkMate = true;
+        checkMateMP.start();
     }
 }
