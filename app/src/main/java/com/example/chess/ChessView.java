@@ -65,7 +65,7 @@ public class ChessView extends View {
     private CountDownTimer timerBlack, timerWhite;
     private String timeBlackStr, timeWhiteStr;
     private long timeBlack, timeWhite;
-    private final long matchTime = 300000; //5 minutes
+    private final long matchTime = 300999; //5 minutes
     private boolean saveWhiteTime, saveBlackTime;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
@@ -197,12 +197,12 @@ public class ChessView extends View {
 
             @Override
             public void onFinish() {
-
+                checkMate = true;
+                ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+                chessView.invalidate();
             }
         };
         timerBlack.start();
-        ChessView chessView = (ChessView) findViewById(R.id.chess_view);
-        chessView.invalidate();
     }
 
     private void initWhiteTimer(long time) {
@@ -233,7 +233,9 @@ public class ChessView extends View {
 
             @Override
             public void onFinish() {
-
+                checkMate = true;
+                ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+                chessView.invalidate();
             }
         };
         timerWhite.start();
@@ -292,6 +294,9 @@ public class ChessView extends View {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void movePiece(int actualRow, int actualColumn, int finalRow, int finalColumn) {
+        if(checkMate)
+            return;
+
         if (finalRow < 1 || finalRow > 8 || finalColumn < 1 || finalColumn > 8) //if goes out of the board
             return;
 
