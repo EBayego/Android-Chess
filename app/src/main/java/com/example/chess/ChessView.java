@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -61,6 +62,11 @@ public class ChessView extends View {
     private List<Integer> rowsXRayList, columnsXRayList;
     private boolean blackKingFirstMove, whiteKingFirstMove;
     private boolean blackSortRookFirstMove, blackLongRookFirstMove, whiteSortRookFirstMove, whiteLongRookFirstMove;
+    private CountDownTimer timerBlack, timerWhite;
+    private String timeBlackStr, timeWhiteStr;
+    private long timeBlack, timeWhite;
+    private final long matchTime = 300000; //5 minutes
+    private boolean saveWhiteTime, saveBlackTime;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -68,7 +74,7 @@ public class ChessView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if ((canvas != null && squareSize == 0f) || restartGame) {
+        if ((canvas != null && squareSize == 0f) || restartGame) { // init game
             float boardSize = ((canvas.getWidth() <= canvas.getHeight()) ? canvas.getWidth() : canvas.getHeight()) * scale;
             squareSize = boardSize / 8f;
             originX = (canvas.getWidth() - boardSize) / 2f;
@@ -82,6 +88,7 @@ public class ChessView extends View {
         initBoard(canvas);
         initPieces(canvas);
         switchText(canvas);
+        printTime(canvas);
         if (checkMate) {
             canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.new_game_button),
                     null,
@@ -92,6 +99,23 @@ public class ChessView extends View {
                             originY * 3.8f + squareSize * .75f
                     ),
                     paint);
+        }
+    }
+
+    private void printTime(Canvas canvas) {
+        if (!"".equals(timeBlackStr)) {
+            paint.setTextSize(90);
+            paint.setUnderlineText(false);
+            paint.setColor(getResources().getColor(R.color.white));
+            canvas.drawText(timeBlackStr, canvasWidth - (2.5f * squareSize), originY - squareSize * 2.25f, paint);
+            timeBlackStr = "";
+        }
+        if (!"".equals(timeWhiteStr)) {
+            paint.setTextSize(90);
+            paint.setUnderlineText(false);
+            paint.setColor(getResources().getColor(R.color.white));
+            canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
+            timeWhiteStr = "";
         }
     }
 
@@ -120,7 +144,7 @@ public class ChessView extends View {
 
     private void initVariables() {
         bitmaps = new HashMap<>();
-        paint = new Paint(Color.LTGRAY);
+        paint = new Paint();
         loadBitmaps();
         board = new Board();
         whiteTurn = true;
@@ -139,6 +163,80 @@ public class ChessView extends View {
         kingChecked = false;
         checkMate = false;
         restartGame = false;
+        timeWhite = matchTime;
+        timeBlack = matchTime;
+        timeBlackStr = "";
+        timeWhiteStr = "";
+        initWhiteTimer(matchTime);
+        initBlackTimer(matchTime);
+    }
+
+    private void initBlackTimer(long time) {
+        timeBlackStr = "";
+        if (timerBlack != null) {
+            timerBlack.cancel();
+            timerBlack = null;
+        }
+        timerBlack = new CountDownTimer(time, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                if (saveBlackTime) {
+                    timeBlack = millisUntilFinished + 500;
+                    saveBlackTime = false;
+                }
+                long actualTime;
+                if (!whiteTurn)
+                    actualTime = millisUntilFinished;
+                else
+                    actualTime = timeBlack;
+                int minutes = (int) Math.floor(actualTime / 60000);
+                int seconds = (int) (actualTime / 1000) % 60; // si es menor que 10 que haya un 0 delante
+                timeBlackStr = "[ " + minutes + ":";
+                timeBlackStr += ((seconds < 10) ? ("0" + seconds) : seconds) + " ]";
+            }
+
+            @Override
+            public void onFinish() {
+
+            }
+        };
+        timerBlack.start();
+        ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+        chessView.invalidate();
+    }
+
+    private void initWhiteTimer(long time) {
+        timeWhiteStr = "";
+        if (timerWhite != null) {
+            timerWhite.cancel();
+            timerWhite = null;
+        }
+        timerWhite = new CountDownTimer(time, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                if (saveWhiteTime) {
+                    timeWhite = millisUntilFinished + 500;
+                    saveWhiteTime = false;
+                }
+                long actualTime;
+                if (whiteTurn)
+                    actualTime = millisUntilFinished;
+                else
+                    actualTime = timeWhite;
+                int minutes = (int) Math.floor(actualTime / 60000);
+                int seconds = (int) (actualTime / 1000) % 60; // si es menor que 10 que haya un 0 delante
+                timeWhiteStr = "[ " + minutes + ":";
+                timeWhiteStr += ((seconds < 10) ? ("0" + seconds) : seconds) + " ]";
+                ChessView chessView = (ChessView) findViewById(R.id.chess_view);
+                chessView.invalidate();
+            }
+
+            @Override
+            public void onFinish() {
+
+            }
+        };
+        timerWhite.start();
     }
 
     private void loadBitmaps() {
@@ -808,6 +906,13 @@ public class ChessView extends View {
         whiteTurn = !whiteTurn;
         ChessView chessView = (ChessView) findViewById(R.id.chess_view);
         chessView.invalidate();
+        if (whiteTurn) {
+            saveBlackTime = true;
+            initWhiteTimer(timeWhite);
+        } else {
+            saveWhiteTime = true;
+            initBlackTimer(timeBlack);
+        }
         kingCheck();
         if (kingChecked) {
             checkMP.start();
@@ -1118,7 +1223,7 @@ public class ChessView extends View {
                 }
             }
         }
-        //condicion de victoria
+        // if reach here, win
         checkMate = true;
         checkMateMP.start();
     }
