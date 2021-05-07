@@ -373,6 +373,17 @@ public class ChessView extends View {
 
         if (kingChecked) { // king check rules
             if ((actualPiece.getPlayer().equals(Player.WHITE) && whiteTurn) || (actualPiece.getPlayer().equals(Player.BLACK) && !whiteTurn)) {
+                Piece pieceChecking = null, king = null;
+                for (Piece p : board.getPieceList()) {
+                    if (p.getModel().equals(PieceModel.KING) && p.getPlayer().equals(whiteTurn ? Player.WHITE : Player.BLACK)) {
+                        king = p;
+                    }
+                }
+                for (Piece p : board.getPieceList()) {
+                    if (!p.getPlayer().equals(king.getPlayer()) && (moveRules(p, p.getRow(), p.getColumn(), king.getRow(), king.getColumn(), king, false))) {
+                        pieceChecking = p;
+                    }
+                }
                 if (otherPiece == null && piecesChecking.size() == 1) {
                     if (!actualPiece.getModel().equals(PieceModel.KING)) {
                         if (rowsCheckList != null && rowsCheckList.size() > 0 && columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in diagonal of the check
@@ -386,7 +397,7 @@ public class ChessView extends View {
                             }
                         } else if (rowsCheckList != null && rowsCheckList.size() > 0) { //if putting a piece in front of the check
                             for (int i = 0; i < rowsCheckList.size(); i++) {
-                                if (rowsCheckList.get(i) == finalRow) {
+                                if (rowsCheckList.get(i) == finalRow && finalColumn == pieceChecking.getColumn()) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, true)) {
                                         endTurn(actualPiece, finalColumn, finalRow, false);
                                         return;
@@ -395,7 +406,7 @@ public class ChessView extends View {
                             }
                         } else if (columnsCheckList != null && columnsCheckList.size() > 0) { //if putting a piece in lateral of the check
                             for (int i = 0; i < columnsCheckList.size(); i++) {
-                                if (columnsCheckList.get(i) == finalColumn) {
+                                if (columnsCheckList.get(i) == finalColumn && finalRow == pieceChecking.getRow()) {
                                     if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, true)) {
                                         endTurn(actualPiece, finalColumn, finalRow, false);
                                         return;
@@ -414,7 +425,7 @@ public class ChessView extends View {
                         return;
                     } else if (!otherPiece.getPlayer().equals(actualPiece.getPlayer())) { //eats the checkingPiece
                         if (piecesChecking.size() == 1) {
-                            if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, true)) {
+                            if (pieceChecking.equals(otherPiece) && moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, true)) {
                                 board.getPieceList().remove(otherPiece);
                                 endTurn(actualPiece, finalColumn, finalRow, true);
                                 return;
