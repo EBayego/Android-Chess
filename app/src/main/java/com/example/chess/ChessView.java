@@ -672,7 +672,9 @@ public class ChessView extends View {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private Boolean kingMovement(Piece piece, int actualRow, int actualColumn, int finalRow, int finalColumn, Piece otherPiece, boolean move) {
-        kingCastle(piece, finalRow, finalColumn);
+        if (move) {
+            kingCastle(piece, finalRow, finalColumn);
+        }
         if ((Math.abs(finalColumn - actualColumn) == 0 || Math.abs(finalColumn - actualColumn) == 1) && (Math.abs(finalRow - actualRow) == 0 || Math.abs(finalRow - actualRow) == 1)) {
             if (otherPiece != null && !otherPiece.getModel().equals(PieceModel.KING)) {
                 if (!piece.getPlayer().equals(otherPiece.getPlayer())) { //if trying to eat a defended piece, don`t
@@ -692,8 +694,8 @@ public class ChessView extends View {
                     board.getPieceList().remove(otherPiece);
                     endTurn(piece, finalColumn, finalRow, true);
                     return false;
-                }
-                //return true;
+                } else
+                    return true;
             }
             if (otherPiece == null) { //if it's a free square but is defended, can`t move
                 for (Piece p : board.getPieceList()) {
