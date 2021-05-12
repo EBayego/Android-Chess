@@ -67,6 +67,7 @@ public class ChessView extends View {
     private long timeBlack, timeWhite;
     private final long matchTime = 300999; //5 minutes
     private boolean saveWhiteTime, saveBlackTime;
+    private List<Integer> rowsColoredSquares, columnsColoredSquares;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -87,7 +88,7 @@ public class ChessView extends View {
         canvas.drawPaint(paint);
         initBoard(canvas);
         initPieces(canvas);
-        //switchText(canvas);
+        switchText(canvas);
         printTime(canvas);
         if (checkMate) {
             timerBlack.cancel();
@@ -172,6 +173,8 @@ public class ChessView extends View {
         kingChecked = false;
         checkMate = false;
         restartGame = false;
+        rowsColoredSquares = new ArrayList<>();
+        columnsColoredSquares = new ArrayList<>();
         timeWhite = matchTime;
         timeBlack = matchTime;
         timeBlackStr = "";
@@ -276,8 +279,19 @@ public class ChessView extends View {
     private void initBoard(Canvas canvas) {
         for (int i = 0; i < 8; i++) {
             for (int k = i, j = 0; k < i + 8; k++, j++) {
-                paint.setColor((k % 2 == 0) ? getResources().getColor(R.color.brown) : getResources().getColor(R.color.light));
-
+                if (k % 2 == 0) {
+                    if (columnsColoredSquares.size() > 0 && rowsColoredSquares.size() > 0 && ((j == columnsColoredSquares.get(0) - 1 && i == rowsColoredSquares.get(0) - 1) || (j == columnsColoredSquares.get(1) - 1 && i == rowsColoredSquares.get(1) - 1))) {
+                        paint.setColor(getResources().getColor(R.color.brownMark));
+                    } else {
+                        paint.setColor(getResources().getColor(R.color.brown));
+                    }
+                } else {
+                    if (columnsColoredSquares.size() > 0 && rowsColoredSquares.size() > 0 && ((j == columnsColoredSquares.get(0) - 1 && i == rowsColoredSquares.get(0) - 1) || (j == columnsColoredSquares.get(1) - 1 && i == rowsColoredSquares.get(1) - 1))) {
+                        paint.setColor(getResources().getColor(R.color.lightMark));
+                    } else {
+                        paint.setColor(getResources().getColor(R.color.light));
+                    }
+                }
                 canvas.drawRect(
                         originX + squareSize * j,
                         originY + i * squareSize,
@@ -829,6 +843,9 @@ public class ChessView extends View {
         return false;
     }
 
+    /**
+     * Checks if can castle & execute it.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void kingCastle(Piece king, int finalRow, int finalColumn) {
         Piece rook = null;
@@ -930,6 +947,9 @@ public class ChessView extends View {
         }
     }
 
+    /**
+     * Menu when crowning a pawn.
+     */
     private void coronationMenu(Piece piece) {
         final Dialog fbDialogue = new Dialog(ChessView.this.getContext(), android.R.style.Theme_Black_NoTitleBar);
         fbDialogue.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
@@ -991,6 +1011,9 @@ public class ChessView extends View {
         }
     }
 
+    /**
+     * Logic when a turn ends.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void endTurn(Piece piece, int finalColumn, int finalRow, Boolean eats) {
         if (!enPassantMove) {
@@ -998,6 +1021,12 @@ public class ChessView extends View {
             enPassantRow = 0;
         } else
             enPassantMove = false;
+        columnsColoredSquares = new ArrayList<>();
+        rowsColoredSquares = new ArrayList<>();
+        columnsColoredSquares.add(piece.getColumn());
+        columnsColoredSquares.add(finalColumn);
+        rowsColoredSquares.add(piece.getRow());
+        rowsColoredSquares.add(finalRow);
         piece.setColumn(finalColumn);
         piece.setRow(finalRow);
         whiteTurn = !whiteTurn;
@@ -1017,11 +1046,14 @@ public class ChessView extends View {
             castleMP.start();
         } else if (eats) {
             eatMP.start();
-        } else if (!eats) {
+        } else {
             moveMP.start();
         }
     }
 
+    /**
+     * Checks if the king have been checked.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void kingCheck() {
         if (piecesChecking.size() > 0)
@@ -1070,6 +1102,9 @@ public class ChessView extends View {
         chessView.invalidate();
     }
 
+    /**
+     * Loads the variables for rows & columns between the checkingPiece and the king.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void getCheckSquareList(Piece p, Piece king) {
         switch (p.getModel()) {
@@ -1133,6 +1168,9 @@ public class ChessView extends View {
         }
     }
 
+    /**
+     * Checks if a piece is looking at the king through xRay.
+     */
     private boolean xRay(Piece piece, Piece king) {
         switch (piece.getModel()) {
             case ROOK:
@@ -1155,6 +1193,9 @@ public class ChessView extends View {
         return false;
     }
 
+    /**
+     * Checks if a piece is the only one in the sight of a piece looking at the king through xRay.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private boolean actualPieceAloneOnXRay(Piece piece, Piece king, Piece actualPiece) {
         getCheckSquareList(piece, king);
@@ -1196,6 +1237,9 @@ public class ChessView extends View {
         return false;
     }
 
+    /**
+     * Checks if a piece can move if his king is looked through xRay.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void moveOnXRay(Piece p, Piece piece, int finalColumn, int finalRow) {
         boolean eats = false;
@@ -1266,6 +1310,9 @@ public class ChessView extends View {
         columnsXRayList = null;
     }
 
+    /**
+     * Checks if the king is checkMated.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void kingCheckMated(Piece checkingPiece, Piece king) {
         if (piecesChecking.size() == 1) {

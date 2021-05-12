@@ -9,7 +9,9 @@
     <color name="white">#FFFFFFFF</color>
     <color name="darkMode">#322F2F</color>
     <color name="brown">#7E5744</color>
+    <color name="brownMark">#AC885D</color>
     <color name="light">#C5B8AC</color>
+    <color name="lightMark">#E1D184</color>
     <color name="redWhite">#DD3131</color>
     <color name="redBlack">#8A1818</color>
 </resources>

@@ -11,7 +11,8 @@ android {
         minSdkVersion 23
         targetSdkVersion 30
         versionCode 1
-        versionName "1.0"
+        versionName "1.53"
+        archivesBaseName = "Chess (" + versionName + ")"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
