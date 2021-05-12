@@ -96,10 +96,10 @@ public class ChessView extends View {
             canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.new_game_button),
                     null,
                     new RectF(
-                            originX + squareSize * 2.25f,
-                            originY * 3.8f,
-                            originX + squareSize * 2.25f + squareSize * 3.5f,
-                            originY * 3.8f + squareSize * .75f
+                            originX + squareSize * 1.75f,
+                            originY * 3.75f,
+                            originX + squareSize * 1.75f + squareSize * 4.55f,
+                            originY * 3.75f + squareSize * 1.3f
                     ),
                     paint);
         }
@@ -110,14 +110,14 @@ public class ChessView extends View {
      */
     private void printTime(Canvas canvas) {
         if (!"".equals(timeBlackStr)) {
-            paint.setTextSize(90);
+            paint.setTextSize((canvasHeight/canvasWidth) * 52f);
             paint.setUnderlineText(false);
             paint.setColor(getResources().getColor(R.color.white));
             canvas.drawText(timeBlackStr, canvasWidth - (2.5f * squareSize), originY - squareSize * 2.25f, paint);
             timeBlackStr = "";
         }
         if (!"".equals(timeWhiteStr)) {
-            paint.setTextSize(90);
+            paint.setTextSize((canvasHeight/canvasWidth) * 52f);
             paint.setUnderlineText(false);
             paint.setColor(getResources().getColor(R.color.white));
             canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
@@ -325,7 +325,7 @@ public class ChessView extends View {
      */
     private void switchText(Canvas canvas) {
         if (!checkMate) {
-            paint.setTextSize(60);
+            paint.setTextSize((canvasHeight/canvasWidth) * 35f);
             paint.setTypeface(Typeface.SERIF);
             paint.setUnderlineText(false);
             if (whiteTurn) {
@@ -686,6 +686,8 @@ public class ChessView extends View {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private Boolean kingMovement(Piece piece, int actualRow, int actualColumn, int finalRow, int finalColumn, Piece otherPiece, boolean move) {
+        if(otherPiece != null && otherPiece.getPlayer().equals(piece.getPlayer()))
+            return false;
         if (move) {
             kingCastle(piece, finalRow, finalColumn);
         }
