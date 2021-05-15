@@ -102,26 +102,69 @@ public class ChessView extends View {
                             originY * 3.75f + squareSize * 1.3f
                     ),
                     paint);
+        } else {
+            printButtons(canvas);
         }
+    }
+
+    private void printButtons(Canvas canvas) {
+        canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.white_flag),
+                null,
+                new RectF(
+                        originX,
+                        originY - squareSize * 2.8f,
+                        originX + squareSize / 1.75f,
+                        originY - squareSize * 2.3f
+                ),
+                paint);
+        canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.white_flag),
+                null,
+                new RectF(
+                        canvasWidth - squareSize / 1.3f,
+                        canvasHeight - squareSize,
+                        canvasWidth - (squareSize / 6f),
+                        canvasHeight - squareSize / 2f
+                ),
+                paint);
+        canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.draw),
+                null,
+                new RectF(
+                        (originX + squareSize / 1.75f) + originX * 2,
+                        originY - squareSize * 2.8f,
+                        originX + squareSize * 1.56f,
+                        originY - squareSize * 2.3f
+                ),
+                paint);
+        canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.draw),
+                null,
+                new RectF(
+                        canvasWidth - squareSize * 1.77f,
+                        canvasHeight - squareSize,
+                        canvasWidth - squareSize * 1.2f,
+                        canvasHeight - squareSize / 2f
+                ),
+                paint);
     }
 
     /**
      * Prints the time left.
      */
     private void printTime(Canvas canvas) {
-        if (!"".equals(timeBlackStr)) {
-            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
-            paint.setUnderlineText(false);
-            paint.setColor(getResources().getColor(R.color.white));
-            canvas.drawText(timeBlackStr, canvasWidth - (2.4f * squareSize), originY - squareSize * 2.25f, paint);
-            timeBlackStr = "";
-        }
-        if (!"".equals(timeWhiteStr)) {
-            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
-            paint.setUnderlineText(false);
-            paint.setColor(getResources().getColor(R.color.white));
-            canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
-            timeWhiteStr = "";
+        if (!checkMate) {
+            if (!"".equals(timeBlackStr)) {
+                paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
+                paint.setUnderlineText(false);
+                paint.setColor(getResources().getColor(R.color.white));
+                canvas.drawText(timeBlackStr, canvasWidth - (2.4f * squareSize), originY - squareSize * 2.25f, paint);
+                timeBlackStr = "";
+            }
+            if (!"".equals(timeWhiteStr)) {
+                paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
+                paint.setUnderlineText(false);
+                paint.setColor(getResources().getColor(R.color.white));
+                canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
+                timeWhiteStr = "";
+            }
         }
     }
 
