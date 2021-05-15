@@ -110,14 +110,14 @@ public class ChessView extends View {
      */
     private void printTime(Canvas canvas) {
         if (!"".equals(timeBlackStr)) {
-            paint.setTextSize((canvasHeight/canvasWidth) * 52f);
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
             paint.setUnderlineText(false);
             paint.setColor(getResources().getColor(R.color.white));
-            canvas.drawText(timeBlackStr, canvasWidth - (2.5f * squareSize), originY - squareSize * 2.25f, paint);
+            canvas.drawText(timeBlackStr, canvasWidth - (2.4f * squareSize), originY - squareSize * 2.25f, paint);
             timeBlackStr = "";
         }
         if (!"".equals(timeWhiteStr)) {
-            paint.setTextSize((canvasHeight/canvasWidth) * 52f);
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
             paint.setUnderlineText(false);
             paint.setColor(getResources().getColor(R.color.white));
             canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
@@ -325,15 +325,15 @@ public class ChessView extends View {
      */
     private void switchText(Canvas canvas) {
         if (!checkMate) {
-            paint.setTextSize((canvasHeight/canvasWidth) * 35f);
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 3.4f);
             paint.setTypeface(Typeface.SERIF);
             paint.setUnderlineText(false);
             if (whiteTurn) {
                 paint.setColor(getResources().getColor(R.color.white));
-                canvas.drawText("White's Turn", originX * 13f, originY * 4f, paint);
+                canvas.drawText("White's Turn", originX * squareSize / 10.3f, originY * 3.9f, paint);
             } else {
                 paint.setColor(getResources().getColor(R.color.black));
-                canvas.drawText("Black's Turn", originX * 13f, originY / 1.4f, paint);
+                canvas.drawText("Black's Turn", originX * squareSize / 10f, originY / 1.4f, paint);
             }
         }
     }
@@ -375,7 +375,7 @@ public class ChessView extends View {
                     if (!p.getPlayer().equals(king.getPlayer())) {
                         if (xRay(p, king)) {
                             if (actualPieceAloneOnXRay(p, king, actualPiece)) {
-                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, true))
+                                if (moveRules(actualPiece, actualRow, actualColumn, finalRow, finalColumn, otherPiece, false))
                                     moveOnXRay(p, actualPiece, finalColumn, finalRow);
                                 return;
                             }
@@ -686,7 +686,7 @@ public class ChessView extends View {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private Boolean kingMovement(Piece piece, int actualRow, int actualColumn, int finalRow, int finalColumn, Piece otherPiece, boolean move) {
-        if(otherPiece != null && otherPiece.getPlayer().equals(piece.getPlayer()))
+        if (otherPiece != null && otherPiece.getPlayer().equals(piece.getPlayer()))
             return false;
         if (move) {
             kingCastle(piece, finalRow, finalColumn);
@@ -1042,6 +1042,8 @@ public class ChessView extends View {
             initBlackTimer(timeBlack);
         }
         kingCheck();
+        if (!kingChecked)
+            kingStalemate();
         if (kingChecked) {
             checkMP.start();
         } else if (eats == null) {
@@ -1168,6 +1170,53 @@ public class ChessView extends View {
                 }
                 break;
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void kingStalemate() {
+        Piece king = null;
+        for (Piece p : board.getPieceList())
+            if (p.getModel().equals(PieceModel.KING))
+                if ((whiteTurn && p.getPlayer().equals(Player.WHITE)) || (!whiteTurn && p.getPlayer().equals(Player.BLACK))) {
+                    king = p;
+                    break;
+                }
+
+        for (Piece myPiece : board.getPieceList()) { // check if any piece can move
+            if (king.getPlayer().equals(myPiece.getPlayer())) {
+                if (myPiece.getModel().equals(PieceModel.PAWN)) { // if a pawn is not blocked
+                    if (moveRules(myPiece, myPiece.getRow(), myPiece.getColumn(), (myPiece.getPlayer().equals(Player.WHITE)) ? myPiece.getRow() - 1 : myPiece.getRow() + 1, myPiece.getColumn(), null, false)) {
+                        return;
+                    }
+                }
+                for (Piece itsPiece : board.getPieceList()) {
+                    if (xRay(itsPiece, king)) {
+                        if (!actualPieceAloneOnXRay(itsPiece, king, myPiece)) { // if any piece isn't alone in xRay (so can move)
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        for (int row = -1; row <= 1; row++) { // if the king has no squares to go
+            for (int column = -1; column <= 1; column++) {
+                if (king.getRow() + row >= 1 && king.getRow() + row <= 8 && king.getColumn() + column >= 1 && king.getColumn() + column <= 8) {
+                    Piece otherPieceAux = null;
+                    for (Piece p : board.getPieceList()) {
+                        if (!p.equals(king) && p.getRow() == king.getRow() + row && p.getColumn() == king.getColumn() + column) {
+                            otherPieceAux = p;
+                            break;
+                        }
+                    }
+                    if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, otherPieceAux, false)) {
+                        return;
+                    }
+                }
+            }
+        }
+        // if reach here, king stalemated
+        checkMate = true;
+        checkMateMP.start();
     }
 
     /**
@@ -1365,7 +1414,7 @@ public class ChessView extends View {
                                 break;
                             }
                         }
-                        if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, (otherPieceAux != null) ? otherPieceAux : null, false)) {
+                        if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, otherPieceAux, false)) {
                             return;
                         }
                     }
