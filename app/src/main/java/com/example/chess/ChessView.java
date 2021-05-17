@@ -68,6 +68,8 @@ public class ChessView extends View {
     private final long matchTime = 300999; //5 minutes
     private boolean saveWhiteTime, saveBlackTime;
     private List<Integer> rowsColoredSquares, columnsColoredSquares;
+    private String endMessage, endReasonMessage;
+    private boolean whiteDraw, blackDraw;
 
     public ChessView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -91,6 +93,13 @@ public class ChessView extends View {
         switchText(canvas);
         printTime(canvas);
         if (checkMate) {
+            paint.setUnderlineText(true);
+            paint.setColor(getResources().getColor(R.color.white));
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 3.4f);
+            canvas.drawText(endMessage, originX * squareSize / 10f, originY / 1.7f, paint);
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 6f);
+            paint.setUnderlineText(false);
+            canvas.drawText(endReasonMessage, originX * squareSize / 10f, originY / 1.4f, paint);
             timerBlack.cancel();
             timerWhite.cancel();
             canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.new_game_button),
@@ -176,12 +185,32 @@ public class ChessView extends View {
             actualColumn = (int) (((event.getX() - originX) / squareSize) + 1);
         }
         if (MotionEvent.ACTION_UP == event.getAction()) {
+            if (!checkMate) {
+                if (event.getX() >= originX && event.getX() <= (originX + squareSize / 1.75f) && event.getY() >= (originY - squareSize * 2.8f) && event.getY() <= (originY - squareSize * 2.3f)) {
+                    checkMate = true;
+                    endMessage = "White Wins!";
+                    endReasonMessage = "black resigns";
+                } else if (event.getX() >= ((originX + squareSize / 1.75f) + originX * 2) && event.getX() <= (originX + squareSize * 1.56f) && event.getY() >= (originY - squareSize * 2.8f) && event.getY() <= (originY - squareSize * 2.3f)) {
+                    blackDraw = true;
+                } else if (event.getX() >= (canvasWidth - squareSize / 1.3f) && event.getX() <= canvasWidth - (squareSize / 6f) && event.getY() >= (canvasHeight - squareSize) && event.getY() <= (canvasHeight - squareSize / 2f)) {
+                    checkMate = true;
+                    endMessage = "Black Wins!";
+                    endReasonMessage = "white resigns";
+                } else if (event.getX() >= (canvasWidth - squareSize * 1.77f) && event.getX() <= (canvasWidth - squareSize * 1.2f) && event.getY() >= (canvasHeight - squareSize) && event.getY() <= (canvasHeight - squareSize / 2f)) {
+                    whiteDraw = true;
+                }
+                if (blackDraw && whiteDraw) {
+                    checkMate = true;
+                    endMessage = "Draw";
+                    endReasonMessage = "by agreement";
+                }
+            }
             finalRow = (int) (((event.getY() - originY) / squareSize) + 1);
             finalColumn = (int) (((event.getX() - originX) / squareSize) + 1);
             if (actualRow != finalRow || actualColumn != finalColumn)
                 movePiece(actualRow, actualColumn, finalRow, finalColumn);
             if (checkMate) {
-                if (event.getX() >= (canvasWidth * 311f / 1080f) && event.getX() <= (canvasWidth * 760f / 1080f) && event.getY() >= (canvasHeight * 1602f / 1868f) && event.getY() <= (canvasHeight * 1694f / 1868f)) {
+                if (event.getX() >= (canvasWidth * 247f / 1080f) && event.getX() <= (canvasWidth * 829f / 1080f) && event.getY() >= (canvasHeight * 1581f / 1868f) && event.getY() <= (canvasHeight * 1745f / 1868f)) {
                     restartGame = true;
                     ChessView chessView = (ChessView) findViewById(R.id.chess_view);
                     chessView.invalidate();
@@ -218,6 +247,10 @@ public class ChessView extends View {
         restartGame = false;
         rowsColoredSquares = new ArrayList<>();
         columnsColoredSquares = new ArrayList<>();
+        endMessage = "";
+        endReasonMessage = "";
+        whiteDraw = false;
+        blackDraw = false;
         timeWhite = matchTime;
         timeBlack = matchTime;
         timeBlackStr = "";
@@ -258,6 +291,8 @@ public class ChessView extends View {
             public void onFinish() {
                 if (!whiteTurn) {
                     checkMate = true;
+                    endMessage = "White Wins!";
+                    endReasonMessage = "by black's timeout";
                     ChessView chessView = (ChessView) findViewById(R.id.chess_view);
                     chessView.invalidate();
                 }
@@ -299,6 +334,8 @@ public class ChessView extends View {
             public void onFinish() {
                 if (whiteTurn) {
                     checkMate = true;
+                    endMessage = "Black Wins!";
+                    endReasonMessage = "by white's timeout";
                     ChessView chessView = (ChessView) findViewById(R.id.chess_view);
                     chessView.invalidate();
                 }
@@ -1077,6 +1114,7 @@ public class ChessView extends View {
         whiteTurn = !whiteTurn;
         ChessView chessView = (ChessView) findViewById(R.id.chess_view);
         chessView.invalidate();
+
         if (whiteTurn) {
             saveBlackTime = true;
             initWhiteTimer(timeWhite);
@@ -1087,6 +1125,12 @@ public class ChessView extends View {
         kingCheck();
         if (!kingChecked)
             kingStalemate();
+
+        if (blackDraw)
+            blackDraw = false;
+        if (whiteDraw)
+            whiteDraw = false;
+
         if (kingChecked) {
             checkMP.start();
         } else if (eats == null) {
@@ -1259,6 +1303,8 @@ public class ChessView extends View {
         }
         // if reach here, king stalemated
         checkMate = true;
+        endMessage = "Draw";
+        endReasonMessage = "by stalemate";
         checkMateMP.start();
     }
 
@@ -1479,6 +1525,8 @@ public class ChessView extends View {
         }
         // if reach here, win
         checkMate = true;
+        endMessage = (king.getPlayer().equals(Player.WHITE) ? "Black" : "White") + " Wins!";
+        endReasonMessage = "by checkmate";
         checkMateMP.start();
     }
 }
