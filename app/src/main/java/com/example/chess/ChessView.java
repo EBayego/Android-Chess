@@ -96,19 +96,19 @@ public class ChessView extends View {
             paint.setUnderlineText(true);
             paint.setColor(getResources().getColor(R.color.white));
             paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 3.4f);
-            canvas.drawText(endMessage, originX * squareSize / 10f, originY / 1.7f, paint);
+            canvas.drawText(endMessage, originX + squareSize * 2.6f, originY / 1.7f, paint);
             paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 6f);
             paint.setUnderlineText(false);
-            canvas.drawText(endReasonMessage, originX * squareSize / 10f, originY / 1.4f, paint);
+            canvas.drawText(endReasonMessage, originX + squareSize * 2.6f, originY / 1.3f, paint);
             timerBlack.cancel();
             timerWhite.cancel();
             canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.new_game_button),
                     null,
                     new RectF(
                             originX + squareSize * 1.75f,
-                            originY * 3.75f,
+                            canvasHeight - squareSize * 1.5f,
                             originX + squareSize * 1.75f + squareSize * 4.55f,
-                            originY * 3.75f + squareSize * 1.3f
+                            canvasHeight - squareSize / 2f
                     ),
                     paint);
         } else {
@@ -116,6 +116,9 @@ public class ChessView extends View {
         }
     }
 
+    /**
+     * Prints the resign & draw buttons.
+     */
     private void printButtons(Canvas canvas) {
         canvas.drawBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.white_flag),
                 null,
@@ -160,17 +163,15 @@ public class ChessView extends View {
      */
     private void printTime(Canvas canvas) {
         if (!checkMate) {
+            paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
+            paint.setUnderlineText(false);
+            paint.setColor(getResources().getColor(R.color.white));
             if (!"".equals(timeBlackStr)) {
-                paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
-                paint.setUnderlineText(false);
-                paint.setColor(getResources().getColor(R.color.white));
-                canvas.drawText(timeBlackStr, canvasWidth - (2.4f * squareSize), originY - squareSize * 2.25f, paint);
+                ;
+                canvas.drawText(timeBlackStr, canvasWidth - (2.2f * squareSize), originY / 3.2f, paint);
                 timeBlackStr = "";
             }
             if (!"".equals(timeWhiteStr)) {
-                paint.setTextSize((canvasHeight / canvasWidth) * squareSize / 2.8f);
-                paint.setUnderlineText(false);
-                paint.setColor(getResources().getColor(R.color.white));
                 canvas.drawText(timeWhiteStr, originX, canvasHeight - squareSize / 2, paint);
                 timeWhiteStr = "";
             }
@@ -210,7 +211,7 @@ public class ChessView extends View {
             if (actualRow != finalRow || actualColumn != finalColumn)
                 movePiece(actualRow, actualColumn, finalRow, finalColumn);
             if (checkMate) {
-                if (event.getX() >= (canvasWidth * 247f / 1080f) && event.getX() <= (canvasWidth * 829f / 1080f) && event.getY() >= (canvasHeight * 1581f / 1868f) && event.getY() <= (canvasHeight * 1745f / 1868f)) {
+                if (event.getX() >= (originX + squareSize * 1.75f) && event.getX() <= (originX + squareSize * 1.75f + squareSize * 4.55f) && event.getY() >= (canvasHeight - squareSize * 1.5f) && event.getY() <= (canvasHeight - squareSize / 2f)) {
                     restartGame = true;
                     ChessView chessView = (ChessView) findViewById(R.id.chess_view);
                     chessView.invalidate();
@@ -410,10 +411,10 @@ public class ChessView extends View {
             paint.setUnderlineText(false);
             if (whiteTurn) {
                 paint.setColor(getResources().getColor(R.color.white));
-                canvas.drawText("White's Turn", originX * squareSize / 10.3f, originY * 3.9f, paint);
+                canvas.drawText("White's Turn", originX + squareSize * 2.6f, canvasHeight - squareSize * 1.2f, paint);
             } else {
                 paint.setColor(getResources().getColor(R.color.black));
-                canvas.drawText("Black's Turn", originX * squareSize / 10f, originY / 1.4f, paint);
+                canvas.drawText("Black's Turn", originX + squareSize * 2.6f, originY / 1.4f, paint);
             }
         }
     }
@@ -434,7 +435,7 @@ public class ChessView extends View {
             if (p.getColumn() == finalColumn && p.getRow() == finalRow) { // search piece when first touch
                 otherPiece = p;
             }
-            if (p.getColumn() == actualColumn && p.getRow() == actualRow) { // search piece when raiseº
+            if (p.getColumn() == actualColumn && p.getRow() == actualRow) { // search piece when raise
                 actualPiece = p;
             }
         }
@@ -633,61 +634,31 @@ public class ChessView extends View {
                     }
                 }
             } else if (actualColumn + 1 == finalColumn || actualColumn - 1 == finalColumn) { //if trying to eat
-                if (piece.getPlayer().equals(Player.WHITE)) {
-                    if (actualRow - finalRow == 1) {
-                        if (otherPiece != null && otherPiece.getModel().equals(PieceModel.KING)) {
-                            return false; //TODO return true; if doesnt work
-                        } else if (otherPiece != null) { // if there is a piece to eat
-                            if (finalRow == 1) {
-                                coronationMenu(piece);
-                            }
-                            if (move) {
-                                board.getPieceList().remove(otherPiece);
-                                endTurn(piece, finalColumn, finalRow, true);
-                            }
-                            return false;
-                        } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) { // if last turn a pawn went enPassant
-                            if (move) {
-                                Piece delete = null;
-                                for (Piece p : board.getPieceList()) {
-                                    if (!p.getPlayer().equals(piece.getPlayer()))
-                                        if (p.getRow() == enPassantRow + 1 && p.getColumn() == enPassantColumn)
-                                            delete = p;
-                                }
-                                if (delete != null)
-                                    board.getPieceList().remove(delete);
-                                endTurn(piece, finalColumn, finalRow, delete != null);
-                            }
-                            return false;
+                if (piece.getPlayer().equals(Player.WHITE) ? actualRow - finalRow == 1 : finalRow - actualRow == 1) {
+                    if (otherPiece != null && otherPiece.getModel().equals(PieceModel.KING)) {
+                        return false;
+                    } else if (otherPiece != null) { // if there is a piece to eat
+                        if (piece.getPlayer().equals(Player.WHITE) ? finalRow == 1 : finalRow == 8) {
+                            coronationMenu(piece);
                         }
-                    }
-                } else if (piece.getPlayer().equals(Player.BLACK)) {
-                    if (finalRow - actualRow == 1) {
-                        if (otherPiece != null && otherPiece.getModel().equals(PieceModel.KING)) {
-                            return true;
-                        } else if (otherPiece != null) {
-                            if (finalRow == 1) {
-                                coronationMenu(piece);
-                            }
-                            if (move) {
-                                board.getPieceList().remove(otherPiece);
-                                endTurn(piece, finalColumn, finalRow, true);
-                            }
-                            return false;
-                        } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) {
-                            if (move) {
-                                Piece delete = null;
-                                for (Piece p : board.getPieceList()) {
-                                    if (!p.getPlayer().equals(piece.getPlayer()))
-                                        if (p.getRow() == enPassantRow - 1 && p.getColumn() == enPassantColumn)
-                                            delete = p;
-                                }
-                                if (delete != null)
-                                    board.getPieceList().remove(delete);
-                                endTurn(piece, finalColumn, finalRow, delete != null);
-                            }
-                            return false;
+                        if (move) {
+                            board.getPieceList().remove(otherPiece);
+                            endTurn(piece, finalColumn, finalRow, true);
                         }
+                        return false;
+                    } else if (finalColumn == enPassantColumn && finalRow == enPassantRow) { // if last turn a pawn went enPassant
+                        if (move) {
+                            Piece delete = null;
+                            for (Piece p : board.getPieceList()) {
+                                if (!p.getPlayer().equals(piece.getPlayer()))
+                                    if (p.getRow() == (piece.getPlayer().equals(Player.WHITE) ? enPassantRow + 1 : enPassantRow - 1) && p.getColumn() == enPassantColumn)
+                                        delete = p;
+                            }
+                            if (delete != null)
+                                board.getPieceList().remove(delete);
+                            endTurn(piece, finalColumn, finalRow, delete != null);
+                        }
+                        return false;
                     }
                 }
             }
@@ -829,18 +800,18 @@ public class ChessView extends View {
             } else
                 rows = IntStream.rangeClosed(actualRow, finalRow).boxed().collect(Collectors.toList()); //if moving forward list order is OK
             for (Piece p : board.getPieceList()) {
-                if (!piece.getPlayer().equals(p.getPlayer()) && finalColumn == p.getColumn() && finalRow == p.getRow() && !piece.getModel().equals(PieceModel.PAWN))
+                if (!piece.getPlayer().equals(p.getPlayer()) && finalColumn == p.getColumn() && finalRow == p.getRow() && !piece.getModel().equals(PieceModel.PAWN)) // if trying to eat the piece
                     eats = true;
-                else if (piece.getPlayer().equals(p.getPlayer()) && finalColumn == p.getColumn() && finalRow == p.getRow() && !piece.getModel().equals(PieceModel.PAWN))
+                else if (piece.getPlayer().equals(p.getPlayer()) && finalColumn == p.getColumn() && finalRow == p.getRow() && !piece.getModel().equals(PieceModel.PAWN)) // else if blocks with its team piece
                     defending = true;
-                else if (!piece.equals(p) && rows.contains(p.getRow()) && actualColumn == p.getColumn()) { //if the piece is in front
+                else if (!piece.equals(p) && rows.contains(p.getRow()) && actualColumn == p.getColumn()) { // else if the piece is in front
                     return true;
                 }
             }
-            if (eats) return false;
+            if (eats) return false; // if moving in front & eats/defends
             if (defending) return false;
         }
-        return false;
+        return false; //if not moving in front
     }
 
     /**
@@ -1032,6 +1003,7 @@ public class ChessView extends View {
     /**
      * Menu when crowning a pawn.
      */
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void coronationMenu(Piece piece) {
         final Dialog fbDialogue = new Dialog(ChessView.this.getContext(), android.R.style.Theme_Black_NoTitleBar);
         fbDialogue.getWindow().setBackgroundDrawable(new ColorDrawable(Color.argb(100, 0, 0, 0)));
@@ -1067,6 +1039,7 @@ public class ChessView extends View {
             }
             if (fbDialogue.isShowing())
                 fbDialogue.dismiss();
+            kingCheck();
             ChessView chessView = (ChessView) findViewById(R.id.chess_view);
             chessView.invalidate();
         };
@@ -1259,6 +1232,9 @@ public class ChessView extends View {
         }
     }
 
+    /**
+     * Checks if the king is staleMated.
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void kingStalemate() {
         Piece king = null;
