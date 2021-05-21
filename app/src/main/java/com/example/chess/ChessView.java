@@ -31,7 +31,7 @@ import java.util.stream.IntStream;
 
 public class ChessView extends View {
     private final float scale = .95f;
-    private float originX = 0f, originY = 0f, squareSize = 0f, canvasWidth, canvasHeight;
+    private float originX, originY, squareSize, canvasWidth, canvasHeight;
     private final List<Integer> imgIds = Arrays.asList(
             R.drawable.rookblack,
             R.drawable.rookwhite,
@@ -1480,7 +1480,9 @@ public class ChessView extends View {
                             }
                         }
                         if (moveRules(king, king.getRow(), king.getColumn(), king.getRow() + row, king.getColumn() + column, otherPieceAux, false)) {
-                            return;
+                            if (!xRay(checkingPiece, new Piece(king.getRow() + row, king.getColumn() + column, king.getPlayer(), king.getModel(), king.getResID()))) {
+                                return;
+                            }
                         }
                     }
                 }

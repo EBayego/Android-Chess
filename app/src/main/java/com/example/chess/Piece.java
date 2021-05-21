@@ -35,10 +35,6 @@ public class Piece {
         return player;
     }
 
-    public void setPlayer(Player player) {
-        this.player = player;
-    }
-
     public PieceModel getModel() {
         return model;
     }
